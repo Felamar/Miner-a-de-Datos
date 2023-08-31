@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import statistics as stats
 
 # %% [markdown]
-# #### Definición de variables
+# #### Definición de funciones
 
 # %% [markdown]
 # ##### traform_data(df)
@@ -78,7 +78,7 @@ def split_data(df, train_size):
 
 # %%
 def euclidean_distance(p, q):
-    x = np.array(p.values)[:-1]
+    x = np.array(p.values)
     y = np.array(q.values)[:-1]
     return np.sqrt(np.sum((y - x) ** 2))
 
@@ -117,33 +117,54 @@ def kNearestNeighbors(p, train_data, k):
 # Una vez terminadas las predicciones, se retorna el porcentaje de errores en el modelo. 
 
 # %%
-def train(k, train_data, test_data):
-    errors = 0
+# def train(k, train_data, test_data):
+#     errors = 0
+#     for i, p in test_data.iterrows():
+#         y          = kNearestNeighbors(p, train_data, k)
+#         results    = df.iloc[[tup[1] for tup in y]]['play'].tolist()
+#         prediction = stats.mode(results)
+
+#         print(f'Punto: {p.values, i} \nVecinos: {y} \nPredicción: {prediction}\n\n')
+
+#         if prediction != p['play']:
+#             errors += 1
+        
+#     return errors / len(test_data)
+
+# %%
+def train(k, train_data, test_data, test_classes):
+
+    good_guess = 0
     for i, p in test_data.iterrows():
         y          = kNearestNeighbors(p, train_data, k)
-        results    = df.iloc[[tup[1] for tup in y]]['play'].tolist()
+        dummy_tup = [tup[1] for tup in y]
+        dummy = train_data.iloc[dummy_tup[:-1]]
+        results    = dummy['play'].tolist()
         prediction = stats.mode(results)
 
-        # print(f'Punto: {p.values, i} \nVecinos: {y} \nPredicción: {prediction}\n\n')
+        print(f'Punto: {p.values, i} \nVecinos: {y} \nPredicción: {prediction}\n\n')
 
-        if prediction != p['play']:
-            errors += 1
+        if prediction == test_classes.iloc[i].values:
+            good_guess += 1
         
-    return errors / len(test_data)
+    return good_guess / len(test_data)
 
 # %%
 df = read_data('Tarea 1\golf.csv')
 train_data, test_data = split_data(df, 10)
+test_classes = test_data['play']
+test_data = test_data.drop(['play'], axis=1)
 print(f'{train_data}\n\n')
-print(test_data)
+print(f'{test_data}\n\n')
+print(f'{test_classes}\n\n')
 
 # %%
-print(train(3, train_data, test_data))
+train(3, train_data, test_data, test_classes)
 
 # %%
-print(train(5, train_data, test_data))
+train(5, train_data, test_data)
 
 # %%
-print(train(7, train_data, test_data))
+train(7, train_data, test_data)
 
 
