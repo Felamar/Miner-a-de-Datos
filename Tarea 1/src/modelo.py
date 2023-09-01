@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import statistics as stats
+import os
 
 def transform_data(df):
     default_cols  = ['overcast', 'rainy', 'sunny']
@@ -69,4 +70,6 @@ def predict(test_path, train_path, k):
         predictions[i] = prediction
 
     test_df['play'] = predictions
-    test_df.to_csv('CSV\\results.csv', index=False)
+    home_dir = os.path.expanduser("~")
+    doc_dir = os.path.join(home_dir, "Documents")
+    test_df.to_csv(os.path.join(doc_dir, "results.csv"), index=False)
