@@ -6,16 +6,15 @@ import ttkbootstrap as ttk
 from tkinter import filedialog
 from tkinter import messagebox
 from ttkbootstrap.constants import *
-import functions as func
 import modelo as model
 
 class Pantalla(ttk.Frame):
     def __init__(self, master):
         super().__init__(master)
         self.pack(fill = BOTH, expand = YES)
-        self.parameters_keys = func.get_Keys()
-        self.csv_path = None
-        self.best_k = 0
+        self.train_csv_path = None
+        self.test_csv_path = None
+        self.best_k = None
 
         # Sidebar frame __init__
         self.sidebar_f = ttk.Frame(self, width = 200)
@@ -33,27 +32,26 @@ class Pantalla(ttk.Frame):
         self.frames = {}
 
         # Read DB frame __init__
-        read_db_text           = 'Complete los campos leer la BD y entrenar el modelo'
+        read_db_text           = 'Seleccione la BD para entrenar el modelo'
         read_db_lf             = ttk.Labelframe(main_container, text = read_db_text, padding=(15,10,10,10))
         read_db_lf.configure(style="info.TLabelframe")
         read_db_lf.grid(row = 0, column = 0, sticky = "nsew")
         self.frames["READ"]    = read_db_lf
-        self.read_db_entries   = {}
-        self.read_db_file_btn  = None
+        self.select_db_btn     = None
         self.read_db_csv_label = None
         self.read_db_btn       = None
+        self.read_best_k_label = None
         self.Create_Read_DB_Fields()
 
         # Test new entry frame __init__
-        test_text = 'Complete los campos para predecir si se va a jugar o no'
-        test_lf = ttk.Labelframe(main_container, text = test_text, padding=(15,10,10,10))
+        test_text              = 'Seleccione la DB a clasificar'
+        test_lf                = ttk.Labelframe(main_container, text = test_text, padding=(15,10,10,10))
         test_lf.configure(style="info.TLabelframe")
         test_lf.grid(row = 0, column = 0, sticky = "nsew")
-        self.frames["TEST"] = test_lf
-        self.test_entries = {}
-        self.test_control_btns = {}
-        self.test_img_btn = None
-        self.test_play_label = None
+        self.frames["TEST"]    = test_lf
+        self.select_db_test    = None
+        self.test_db_csv_label = None
+        self.test_db_btn       = None
         self.Create_Test_Fields()
 
         # Show register frame
@@ -65,7 +63,7 @@ class Pantalla(ttk.Frame):
     def Create_Sidebar_Btns(self):
         register_btn = ttk.Button(
             master=self.sidebar_f,
-            text='Registrar producto',
+            text='DB de Entrenamiento',
             bootstyle = PRIMARY,
             command=lambda: self.Show_Lf("READ")
         )
@@ -74,7 +72,7 @@ class Pantalla(ttk.Frame):
 
         modify_btn = ttk.Button(
             master=self.sidebar_f,
-            text='Modificar producto',
+            text='DB de Clasificación',
             bootstyle = PRIMARY,
             command=lambda: self.Show_Lf("TEST")
         )
@@ -86,8 +84,8 @@ class Pantalla(ttk.Frame):
         read_db_frame = ttk.Frame(self.frames["READ"])
         read_db_frame.pack(fill = X, expand = YES, anchor="nw")
         read_db_btn = ttk.Button(read_db_frame, 
-            text="Read DB", 
-            command=lambda: self.Read_DB()
+            text="Entrener", 
+            command=lambda: self.Train_DB()
         )
         read_db_btn.configure(style="success.TButton")
         read_db_btn.grid(row=1, column=1, padx=5)
@@ -98,68 +96,39 @@ class Pantalla(ttk.Frame):
         self.read_db_csv_label = label
         btn = ttk.Button(read_db_frame,
             text="Seleccionar CSV",
-            command=lambda label = label: self.Read_CSV(label)
+            command=lambda label = label: self.Select_Train_CSV(label)
         )
         btn.grid(row=1, column=0, padx=5)
         btn.configure(style="info.TButton")
-        self.read_db_file_btn = btn
-    # end create_register_fields
+        self.select_db_btn = btn
+        label = ttk.Label(read_db_frame, text="Mejor K:     ")
+        label.grid(row=1, column=3, sticky="w", padx=5)
+        self.read_best_k_label = label
+    # end Create_Read_DB_Fields
 
     def Create_Test_Fields(self):
         test_frame = ttk.Frame(self.frames["TEST"])
         test_frame.pack(fill = X, expand = YES, anchor="nw")
 
-        cancel_btn = ttk.Button(test_frame,
-            text="Cancelar",
-            command=lambda: self.Cancel_Modify()
+        test_db_btn = ttk.Button(test_frame, 
+            text="Clasificar Entradas", 
+            command=lambda: self.Test_DB()
         )
-        cancel_btn.configure(bootstyle = DANGER)
-        cancel_btn.grid(row=3, column=4, padx=5)
-        self.test_control_btns["CANCEL"] = cancel_btn        
-        
-        predict_btn = ttk.Button(test_frame,
-            text="Predecir",
-            command=lambda: self.Predict()
+        test_db_btn.configure(style="success.TButton")
+        test_db_btn.grid(row=1, column=1, padx=5)
+        self.test_db_btn = test_db_btn
+
+        label = ttk.Label(test_frame)
+        label.grid(row=0, column=0, sticky="w", padx=5)
+        self.test_db_csv_label = label
+        btn = ttk.Button(test_frame,
+            text="Seleccionar CSV",
+            command=lambda label = label: self.Select_Test_CSV(label)
         )
-        predict_btn.configure(bootstyle = SUCCESS)
-        predict_btn.grid(row=3, column=3, padx=5)
-        self.test_control_btns["CANCEL"] = cancel_btn
-        
-        label_text = ''
-
-        for index, P in enumerate(self.parameters_keys):
-            entry = None
-            label_text = func.get_Parameter_Des(P)
-            label = ttk.Label(test_frame, text = label_text)
-            
-            entry = ttk.Entry(test_frame,
-                font       = ("DM Sans", 10),
-                foreground = "#ababab",
-                width      = func.get_Parameter_Width(P)
-            )
-            entry.insert(0, func.get_Parameter_DV(P))
-            entry.bind("<FocusIn>",
-                lambda event, entry = entry, default_text = func.get_Parameter_DV(P):
-                self.Entry_Focus(event, entry, default_text)
-            )
-            entry.bind("<FocusOut>",
-                lambda event, entry = entry, default_text = func.get_Parameter_DV(P):
-                self.Entry_Focus(event, entry, default_text)
-            )
-            if P == "PLAY":
-                label.grid(row=0, column=index, sticky="w", padx=5)
-            else:
-                minus = 1 if index % 2 == 1 else 0
-                label.grid(row=index - minus, column=index % 2, sticky="w", padx=5)
-                entry.configure(bootstyle= INFO)
-                entry.grid(row= index + 1 - minus , column=index % 2, padx=5)
-                self.test_entries[P] = entry
-
-        label = ttk.Label(test_frame, text="Resultado")
-        label.grid(row=1, column=index, sticky="w", padx=5)
-        self.test_play_label = label
-
-    # end create_modify_fields
+        btn.grid(row=1, column=0, padx=5)
+        btn.configure(style="info.TButton")
+        self.select_db_test = btn
+    # end Create_Test_Fields
 
     def Show_Lf(self, lf_name):
         frame = self.frames[lf_name]
@@ -170,16 +139,7 @@ class Pantalla(ttk.Frame):
                 self.sidebar_btns[key].configure(bootstyle = OUTLINE)
     # end show_lf
 
-    def Entry_Focus(self, event, entry, default_text):
-        if entry.get() == default_text:
-            entry.delete(0, END)
-            entry.configure(foreground = "#232323")
-        elif entry.get() == '':
-            entry.insert(0, default_text)
-            entry.configure(foreground = "#ababab")
-    # end entry_focus
-
-    def Read_CSV(self, label):
+    def Select_Train_CSV(self, label):
         home_dir = os.path.expanduser("~")
         doc_dir = os.path.join(home_dir, "Documents")
         csv_path = filedialog.askopenfilename(
@@ -188,80 +148,46 @@ class Pantalla(ttk.Frame):
             filetypes = (("Archivos CSV", "*.csv"), ("Todos los archivos", "*.*"))
         )
         if os.path.isfile(csv_path):
-            self.csv_path = csv_path
+            self.train_csv_path = csv_path
             label.configure(text = csv_path.split("/")[-1])
         else:
+            messagebox.showerror("Error", "Seleccione un archivo CSV")
             label.configure(text = '')
-    # end get_img
+    # end Read_Train_CSV
 
-    def Read_DB(self):
-        path = self.read_db_csv_label.cget("text")
-        is_valid = func.isValid_CSV(path)
-        if not is_valid:
-            self.Invalid_Data(self.read_db_entries, ['CSV'], "READ")
+    def Select_Test_CSV(self, label):
+        home_dir = os.path.expanduser("~")
+        doc_dir = os.path.join(home_dir, "Documents")
+        csv_path = filedialog.askopenfilename(
+            initialdir = doc_dir,
+            title = "Seleccionar archivo CSV",
+            filetypes = (("Archivos CSV", "*.csv"), ("Todos los archivos", "*.*"))
+        )
+        if os.path.isfile(csv_path):
+            self.test_csv_path = csv_path
+            label.configure(text = csv_path.split("/")[-1])
         else:
-            self.read_db_btn.configure(text="Done")
-            self.best_k = model.train(self.csv_path)
+            messagebox.showerror("Error", "Seleccione un archivo CSV")
+            label.configure(text = '')
+    # end Read_Test_CSV
+
+    def Train_DB(self):
+        path = self.train_csv_path
+        if path == None or not path.endswith(".csv") :
+            messagebox.showerror("Error", "Seleccione un archivo CSV")
+            return
+        self.best_k = model.train(path)
+        self.read_db_btn.configure(text="Done")
+        self.read_best_k_label.configure(text="Mejor K:    " + str(self.best_k[1]))
         return
-        
-    # end register_product
+    # end read_db
 
-    def Cancel_Modify(self):
-        self.Clear_Entries(self.test_entries, "TEST")
-    # end cancel_modify
-
-    def Invalid_Data(self, entries : dict, keys : list, from_f : str):
-        for key in keys:
-            if key == "CSV" and from_f == "READ":
-                self.read_db_file_btn.configure(bootstyle = DANGER)
-                continue
-            entries[key].configure(bootstyle = DANGER)
-        parameters = self.parameters_keys
-        if from_f == "READ":
-            parameters = 'CSV'
-        valid_keys = [value for value in parameters + ["CSV"] if value not in keys]
-        self.Valid_Data(entries, valid_keys, from_f)
-    # end invalid_data
-
-    def Valid_Data(self, entries : dict, keys : list, from_f : str):
-        for key in keys:
-            if key == "CSV" and from_f == "READ":
-                self.read_db_file_btn.configure(bootstyle = INFO)
-                continue
-            entries[key].configure(bootstyle = INFO)
-    # end valid_data
-
-    def Clear_Entries(self, entries : dict, from_f : str):
-        if from_f == "TEST":
-            self.test_play_label.configure(text = 'Resultado')
-
-            for key in entries.keys():
-                entries[key].delete(0, END)
-                entries[key].insert(0, func.get_Parameter_DV(key))
-                entries[key].configure(foreground = "#ababab")
-
-
-        if from_f == "REGISTER":
-            for key in entries.keys():
-                entries[key].delete(0, END)
-                entries[key].insert(0, func.get_Parameter_DV(key))
-                entries[key].configure(foreground = "#ababab")
-                entries[key].configure(bootstyle = INFO)
-            self.read_db_csv_label.configure(text = '')
-    # end clear_entries
-    
-    def Predict(self):
-        a, b = func.Verify_Data(self.test_entries)
-        p = np.array([self.test_entries[key].get() for key in self.parameters_keys[:-1]])
-        outlook = p[0]
-        p = [np.int64(x) for x in p[1:]]
-        if outlook == 'sunny':
-            p = np.concatenate(([1, 0, 0], p))
-        elif outlook == 'rainy':
-            p = np.concatenate(([0, 1, 0], p))
-        elif outlook == 'overcast':
-            p = np.concatenate(([0, 0, 1], p))
-        
-        prediction = model.predict(p, self.best_k, self.csv_path)
-        self.test_play_label.configure(text = prediction)
-    # end predict
+    def Test_DB(self):
+        path = self.test_csv_path
+        if path == None or not path.endswith(".csv") :
+            messagebox.showerror("Error", "Seleccione un archivo CSV")
+            return
+        model.predict(self.test_csv_path, self.train_csv_path, self.best_k[1])
+        self.read_db_btn.configure(text="Done")
+        return
+    # end read_db
