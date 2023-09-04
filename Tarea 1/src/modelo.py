@@ -71,5 +71,5 @@ def predict(test_path, train_path, k):
 
     test_df['play'] = predictions
     home_dir = os.path.expanduser("~")
-    doc_dir = os.path.join(home_dir, "Documents")
+    doc_dir = os.path.join(home_dir, "Desktop")
     test_df.to_csv(os.path.join(doc_dir, "results.csv"), index=False)
