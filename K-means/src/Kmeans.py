@@ -92,6 +92,17 @@ def clustering(centroids: np.array, df: pd.DataFrame, ranges: np.array) -> np.ar
     return clusters
 
 # %%
+def check_centroid_values(centroids: np.array, df: pd.DataFrame, ranges: np.array) -> np.array:
+    # Check if centroid values are valid
+    new_centroids = np.zeros(centroids.shape)
+    # For each centroid
+    for k, centroid in enumerate(centroids):
+        for i, value in enumerate(centroid):
+            new_centroids[k, i] = df[df['cluster'] == k][i].mode().values[0] if ranges[i] == 1 else value
+
+    return new_centroids
+
+# %%
 def k_means(df: pd.DataFrame, k: int) -> pd.DataFrame:
     # K-means clustering algorithm
 
@@ -115,6 +126,8 @@ def k_means(df: pd.DataFrame, k: int) -> pd.DataFrame:
     while True:
         # Calculate new centroids
         new_centroids = np.array  ([round(df_clustered[df_clustered['cluster'] == i].mean(), 2)[:-1] for i in range(k)])
+        # Check if centroid values are valid
+        new_centroids = check_centroid_values(new_centroids, df_clustered, ranges)
         # Cluster objects to new centroids
         new_clusters  = clustering(new_centroids, df, ranges)
         # Append clusters to cluster array
